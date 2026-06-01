@@ -1,0 +1,55 @@
+# -----------------------------------------------------------------------
+# Runtime config — contains credentials (NAS user/password) and local
+# paths. Copy config.json.example to config.json and fill in your values.
+# -----------------------------------------------------------------------
+pipeline/config.json
+
+# -----------------------------------------------------------------------
+# ComfyUI portable install (~24 GB of model weights + Python environment)
+# Download and install separately — see README.
+# -----------------------------------------------------------------------
+ComfyUI_windows_portable/
+
+# -----------------------------------------------------------------------
+# Downloads folder — large archives and pre-built wheels
+# -----------------------------------------------------------------------
+_downloads/*.7z
+_downloads/wheels/
+
+# -----------------------------------------------------------------------
+# Pipeline runtime folders — generated at runtime, not source code
+# -----------------------------------------------------------------------
+pipeline/inbox/
+pipeline/working/
+pipeline/processed/
+pipeline/results/
+pipeline/failed/
+
+# -----------------------------------------------------------------------
+# Logs
+# -----------------------------------------------------------------------
+pipeline/*.log
+
+# -----------------------------------------------------------------------
+# Python
+# -----------------------------------------------------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# -----------------------------------------------------------------------
+# Editor / OS
+# -----------------------------------------------------------------------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo

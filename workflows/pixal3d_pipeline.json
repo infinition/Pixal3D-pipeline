@@ -1,0 +1,205 @@
+{
+  "id": "251e40f3-4903-4cbf-bb06-4f9332e2f8f9",
+  "revision": 0,
+  "last_node_id": 28,
+  "last_link_id": 31,
+  "nodes": [
+    {
+      "id": 7,
+      "type": "Preview3D",
+      "pos": [938.69, 9190.85],
+      "size": [400, 550],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {"name": "camera_info", "shape": 7, "type": "LOAD3D_CAMERA", "link": null},
+        {"name": "bg_image",    "shape": 7, "type": "IMAGE",          "link": null},
+        {"name": "model_file",  "type": "STRING,FILE_3D_GLB,FILE_3D_GLTF,FILE_3D_FBX,FILE_3D_OBJ,FILE_3D_STL,FILE_3D_USDZ,FILE_3D", "widget": {"name": "model_file"}, "link": 16},
+        {"name": "image",       "type": "PREVIEW_3D", "widget": {"name": "image"}, "link": null}
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "Preview3D",
+        "cnr_id": "comfy-core",
+        "ver": "0.21.0",
+        "Camera Config": {
+          "cameraType": "perspective", "fov": 75,
+          "state": {"position": {"x": 7.33, "y": 5.39, "z": 12.48}, "target": {"x": 0, "y": 0, "z": 0}, "zoom": 1, "cameraType": "perspective"}
+        },
+        "Light Config": {"intensity": 3.5},
+        "Scene Config": {"showGrid": true, "backgroundColor": "#282828", "backgroundImage": "", "backgroundRenderMode": "tiled"},
+        "Model Config": {"upDirection": "original", "materialMode": "normal", "showSkeleton": false}
+      },
+      "widgets_values": ["", ""]
+    },
+    {
+      "id": 16,
+      "type": "ShowText|pysssss",
+      "pos": [621.75, 9489.82],
+      "size": [304.53, 243.61],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [{"name": "text", "type": "STRING", "link": 17}],
+      "outputs": [{"name": "STRING", "shape": 6, "type": "STRING", "links": null}],
+      "properties": {"Node name for S&R": "ShowText|pysssss", "cnr_id": "comfyui-custom-scripts", "ver": "1.2.5"},
+      "widgets_values": [""]
+    },
+    {
+      "id": 24,
+      "type": "Pixal3DImageTo3D",
+      "pos": [620.74, 9017.61],
+      "size": [301.61, 434],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {"name": "model",               "type": "PIXAL3D_MODEL",  "link": 27},
+        {"name": "image",               "type": "IMAGE",          "link": 28},
+        {"name": "manual_fov",          "shape": 7, "type": "PIXAL3D_CAMERA", "link": null},
+        {"name": "seed",                "type": "INT",     "widget": {"name": "seed"},                "link": null},
+        {"name": "pipeline_type",       "type": "COMBO",   "widget": {"name": "pipeline_type"},       "link": null},
+        {"name": "background_mode",     "type": "COMBO",   "widget": {"name": "background_mode"},     "link": null},
+        {"name": "camera_mode",         "type": "COMBO",   "widget": {"name": "camera_mode"},         "link": null},
+        {"name": "manual_camera_angle_x","type": "FLOAT",  "widget": {"name": "manual_camera_angle_x"},"link": null},
+        {"name": "manual_distance",     "type": "FLOAT",   "widget": {"name": "manual_distance"},     "link": null},
+        {"name": "mesh_scale",          "type": "FLOAT",   "widget": {"name": "mesh_scale"},          "link": null},
+        {"name": "extend_pixel",        "type": "INT",     "widget": {"name": "extend_pixel"},        "link": null},
+        {"name": "camera_resolution",   "type": "INT",     "widget": {"name": "camera_resolution"},   "link": null},
+        {"name": "steps",               "type": "INT",     "widget": {"name": "steps"},               "link": null},
+        {"name": "guidance",            "type": "FLOAT",   "widget": {"name": "guidance"},            "link": null},
+        {"name": "texture_guidance",    "type": "FLOAT",   "widget": {"name": "texture_guidance"},    "link": null},
+        {"name": "max_num_tokens",      "type": "INT",     "widget": {"name": "max_num_tokens"},      "link": null},
+        {"name": "force_offload",       "type": "BOOLEAN", "widget": {"name": "force_offload"},       "link": null}
+      ],
+      "outputs": [
+        {"name": "pixal3d_result", "type": "PIXAL3D_RESULT", "links": [29]},
+        {"name": "rembg_image",    "type": "IMAGE",           "links": []}
+      ],
+      "properties": {"Node name for S&R": "Pixal3DImageTo3D"},
+      "widgets_values": [0, "randomize", "1024_cascade", "auto_remove", "moge", 0.857556, 2, 1, 0, 512, 20, 7.5, 1, 49152, false]
+    },
+    {
+      "id": 17,
+      "type": "Pixal3DExportGLB",
+      "pos": [941.48, 9019.91],
+      "size": [332.03, 130],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {"name": "pixal3d_result",   "type": "PIXAL3D_RESULT", "link": 29},
+        {"name": "decimation_target","type": "INT",     "widget": {"name": "decimation_target"}, "link": null},
+        {"name": "texture_size",     "type": "INT",     "widget": {"name": "texture_size"},      "link": null},
+        {"name": "remesh",           "type": "BOOLEAN", "widget": {"name": "remesh"},            "link": null},
+        {"name": "filename_prefix",  "type": "STRING",  "widget": {"name": "filename_prefix"},   "link": null}
+      ],
+      "outputs": [{"name": "glb_path", "type": "STRING", "links": [16, 17]}],
+      "properties": {"Node name for S&R": "Pixal3DExportGLB"},
+      "widgets_values": [1000000, 2048, true, "pixal3d"]
+    },
+    {
+      "id": 28,
+      "type": "MarkdownNote",
+      "pos": [-38.74, 9064.20],
+      "size": [329.75, 619.59],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": ["# Pixal3D Pipeline Workflow\n\nNodes: LoadImage -> Pixal3DModelLoader -> Pixal3DImageTo3D -> Pixal3DExportGLB -> Preview3D\n\nThis workflow is designed to be driven by the watcher + control panel.\nDrop images into the inbox folder and let the automation handle the rest.\n\nFor manual use, load an image in the LoadImage node and run the queue.\n\nSee README.md for setup instructions and parameter documentation."],
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 15,
+      "type": "LoadImage",
+      "pos": [320.91, 9365.52],
+      "size": [293.85, 371.47],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {"name": "image",  "type": "COMBO",       "widget": {"name": "image"},  "link": null},
+        {"name": "upload", "type": "IMAGEUPLOAD", "widget": {"name": "upload"}, "link": null}
+      ],
+      "outputs": [
+        {"name": "IMAGE", "type": "IMAGE", "links": [28]},
+        {"name": "MASK",  "type": "MASK",  "links": null}
+      ],
+      "properties": {"Node name for S&R": "LoadImage", "cnr_id": "comfy-core", "ver": "0.21.1"},
+      "widgets_values": ["", "image"]
+    },
+    {
+      "id": 9,
+      "type": "Pixal3DEnvironmentCheck",
+      "pos": [1378.13, 9108.66],
+      "size": [357.66, 26],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [{"name": "report", "type": "STRING", "links": [6]}],
+      "properties": {"Node name for S&R": "Pixal3DEnvironmentCheck"},
+      "widgets_values": []
+    },
+    {
+      "id": 10,
+      "type": "ShowText|pysssss",
+      "pos": [1402.54, 9272.00],
+      "size": [358.30, 504.65],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [{"name": "text", "type": "STRING", "link": 6}],
+      "outputs": [{"name": "STRING", "shape": 6, "type": "STRING", "links": null}],
+      "properties": {"Node name for S&R": "ShowText|pysssss", "cnr_id": "comfyui-custom-scripts", "ver": "1.2.5"},
+      "widgets_values": ["Run the queue to see the environment check report."]
+    },
+    {
+      "id": 23,
+      "type": "Pixal3DModelLoader",
+      "pos": [322.17, 9018.72],
+      "size": [281.91, 298],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {"name": "model_repo",        "type": "STRING",  "widget": {"name": "model_repo"},        "link": null},
+        {"name": "hf_endpoint",       "type": "STRING",  "widget": {"name": "hf_endpoint"},       "link": null},
+        {"name": "attention_backend", "type": "COMBO",   "widget": {"name": "attention_backend"}, "link": null},
+        {"name": "vram_mode",         "type": "COMBO",   "widget": {"name": "vram_mode"},         "link": null},
+        {"name": "download_if_missing","type": "BOOLEAN","widget": {"name": "download_if_missing"},"link": null},
+        {"name": "load_moge",         "type": "BOOLEAN", "widget": {"name": "load_moge"},         "link": null},
+        {"name": "load_rembg",        "type": "BOOLEAN", "widget": {"name": "load_rembg"},        "link": null},
+        {"name": "naf_mode",          "type": "COMBO",   "widget": {"name": "naf_mode"},          "link": null},
+        {"name": "naf_target_size",   "type": "COMBO",   "widget": {"name": "naf_target_size"},   "link": null},
+        {"name": "preload_naf",       "type": "BOOLEAN", "widget": {"name": "preload_naf"},       "link": null},
+        {"name": "force_reload",      "type": "BOOLEAN", "widget": {"name": "force_reload"},      "link": null}
+      ],
+      "outputs": [{"name": "model", "type": "PIXAL3D_MODEL", "links": [27]}],
+      "properties": {"Node name for S&R": "Pixal3DModelLoader"},
+      "widgets_values": ["TencentARC/Pixal3D", "https://huggingface.co", "auto", "dynamic_vram", false, true, false, "fallback_if_missing", "upstream", false, false]
+    }
+  ],
+  "links": [
+    [6,  9,  0, 10, 0, "STRING"],
+    [16, 17, 0,  7, 2, "STRING"],
+    [17, 17, 0, 16, 0, "STRING"],
+    [27, 23, 0, 24, 0, "PIXAL3D_MODEL"],
+    [28, 15, 0, 24, 1, "IMAGE"],
+    [29, 24, 0, 17, 0, "PIXAL3D_RESULT"]
+  ],
+  "groups": [
+    {"id": 1, "title": "Environment Check", "bounding": [1365.96, 9020.83, 515.77, 829.92], "color": "#8A8", "flags": {}},
+    {"id": 2, "title": "Image-to-3D",       "bounding": [310.91,  8947.61, 1037.78, 803.23], "color": "#3f789e", "flags": {}}
+  ],
+  "config": {},
+  "extra": {
+    "frontendVersion": "1.43.18"
+  },
+  "version": 0.4
+}

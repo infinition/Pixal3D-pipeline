@@ -1,0 +1,18 @@
+{
+  "inbox_dir": "",
+  "output_dir": "",
+  "nas_user": "",
+  "nas_password": "",
+  "rembg_model": "isnet-general-use",
+  "pipeline_type": "1024_cascade",
+  "camera_mode": "moge",
+  "steps": 20,
+  "guidance": 7.5,
+  "max_num_tokens": 49152,
+  "mesh_scale": 1.0,
+  "camera_resolution": 512,
+  "remesh": true,
+  "decimation_target": 2500000,
+  "texture_guidance": 1.0,
+  "texture_size": 4096
+}
