@@ -4,9 +4,7 @@ A batch automation layer that turns images into 3D assets (.glb) with no
 manual intervention. Drop an image into a watched folder and a ready-to-use
 GLB file comes out the other end, background removed and mesh decimated.
 
-Built on top of [Pixal3D](https://huggingface.co/TencentARC/Pixal3D) via the
-ComfyUI API. Tested on an RTX 4070 Ti (12 GB VRAM). Each asset takes roughly
-5 to 6 minutes end to end.
+Built on top of [Pixal3D](https://huggingface.co/TencentARC/Pixal3D) via the [Saganaki22/Pixal3D-ComfyUI](https://github.com/Saganaki22/Pixal3D-ComfyUI) custom node for the ComfyUI API. Tested on an RTX 4070 Ti (12 GB VRAM). Each asset takes roughly 5 to 6 minutes end to end.
 
 
 <img width="1686" height="1165" alt="image" src="https://github.com/user-attachments/assets/1c62b1aa-4e1e-4c88-a096-8b4a02b54d4e" />
@@ -42,9 +40,9 @@ a regular photo and the alpha cutout is handled automatically.
 
 - Windows 10/11
 - NVIDIA GPU with at least 12 GB VRAM (16 GB recommended for higher settings)
-- ComfyUI Windows portable build with the Pixal3D custom node installed
-- Python packages: see `_downloads/requirements-pixal3d-nonatten.txt`
-- Gradio: `pip install gradio` (used by the control panel)
+- ComfyUI Windows portable build with the [Saganaki22/Pixal3D-ComfyUI](https://github.com/Saganaki22/Pixal3D-ComfyUI) custom node installed
+- Python packages & CUDA wheels: installed automatically via the custom node's installer or manual wheel installation
+- Gradio: `pip install gradio` (installed automatically via `requirements.txt`)
 
 ---
 
@@ -70,8 +68,13 @@ Pixal3D-pipeline/
 
 ### 3. Install the Pixal3D custom node
 
-Follow the [Pixal3D node installation instructions](https://huggingface.co/TencentARC/Pixal3D).
-The custom node goes into `ComfyUI_windows_portable/ComfyUI/custom_nodes/`.
+Install the **Pixal3D-ComfyUI** custom node by **Saganaki22**. You can do this in two ways:
+- **Recommended**: Open ComfyUI, go to the **ComfyUI Manager**, search for **"Pixal3D"** by `Saganaki22`, and click **Install**.
+- **Manual**: Clone the repository into ComfyUI's custom nodes folder:
+  ```bash
+  cd ComfyUI_windows_portable/ComfyUI/custom_nodes/
+  git clone https://github.com/Saganaki22/Pixal3D-ComfyUI.git
+  ```
 
 ### 4. Download the model weights
 
@@ -92,34 +95,34 @@ cd _downloads
 Total size is roughly 24 GB. The script prints progress and resumes from where
 it left off if the download is interrupted.
 
-### 5. Install Python dependencies
+### 5. Install Python dependencies & CUDA wheels
 
-Two requirements files cover different parts of the stack.
+The custom node relies on specialized CUDA kernels (`flash_attn`, `cumesh`, `drtk`, `o_voxel`, `flex_gemm`) that are highly environment-dependent (they must match your exact Python, PyTorch, and CUDA versions).
 
-**Pipeline** (watcher + control panel):
+#### A. Install Pipeline Dependencies
+Install the required packages for the watcher and control panel (Gradio, rembg, etc.) in the ComfyUI embedded Python environment:
 
 ```bat
 ComfyUI_windows_portable\python_embeded\python.exe -m pip install -r requirements.txt
 ```
 
-**Pixal3D ComfyUI node** (model dependencies, no flash_attn):
+#### B. Install Custom Node Dependencies & CUDA Wheels
+You can install these automatically or manually:
 
-```bat
-ComfyUI_windows_portable\python_embeded\python.exe -m pip install ^
-    -r _downloads\requirements-comfyui-node.txt
-```
+- **Automatic (Recommended)**:
+  Run the automated installer script provided inside the custom node folder using ComfyUI's embedded Python:
+  ```bat
+  cd ComfyUI_windows_portable\ComfyUI\custom_nodes\Pixal3D-ComfyUI
+  ..\..\..\python_embeded\python.exe install.py
+  ```
+  This script will automatically detect your configuration and download/install the appropriate prebuilt wheels (from Wildminder's HuggingFace repository or other trusted wheel hosts).
 
-Then install the prebuilt CUDA wheels from `_downloads/wheels/` (flash_attn,
-cumesh, drtk, o_voxel, flex_gemm):
-
-```bat
-ComfyUI_windows_portable\python_embeded\python.exe -m pip install ^
-    _downloads\wheels\flash_attn-2.8.4+d20260328cu130torch2.11.0cxx11abiTRUE-cp313-cp313-win_amd64.whl ^
-    _downloads\wheels\cumesh_vb-1.0+cu130torch2.11-cp313-cp313-win_amd64.whl ^
-    _downloads\wheels\drtk-0.1.0+cu130torch2.11-cp313-cp313-win_amd64.whl ^
-    _downloads\wheels\o_voxel_vb_ap-0.0.1+cu130torch2.11-cp313-cp313-win_amd64.whl ^
-    _downloads\wheels\flex_gemm_ap-1.0.0+cu130torch2.11-cp313-cp313-win_amd64.whl
-```
+- **Manual (Advanced)**:
+  If the automated script fails, you will need to find the prebuilt wheels matching your Python and CUDA versions (for example, from [Pozzetti's CUDA Wheels repo](https://github.com/PozzettiAndrea/cuda-wheels/releases) or HuggingFace hosts) and install them manually:
+  ```bat
+  ComfyUI_windows_portable\python_embeded\python.exe -m pip install <path_to_wheel>.whl
+  ```
+  *(Once installed, you can use the **Pixal3D Environment Check** node inside ComfyUI to verify that all kernels are correctly loaded).*
 
 ### 6. Configure
 
@@ -333,6 +336,11 @@ for debugging.
 </a>
 
 ---
+
+## Credits & Attribution
+
+- **Original Models & Research**: [TencentARC/Pixal3D](https://huggingface.co/TencentARC/Pixal3D)
+- **ComfyUI Node Integration**: Developed by [Saganaki22](https://github.com/Saganaki22) in [Pixal3D-ComfyUI](https://github.com/Saganaki22/Pixal3D-ComfyUI). This pipeline operates as an automation layer specifically designed around these custom nodes.
 
 ## License
 

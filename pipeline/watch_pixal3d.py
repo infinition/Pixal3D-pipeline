@@ -18,6 +18,7 @@ import random
 import shutil
 import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -68,7 +69,13 @@ _nas_authed: set[str] = set()
 
 
 def log(msg: str) -> None:
-    print(f"{datetime.now():%H:%M:%S}  {msg}", flush=True)
+    text = f"{datetime.now():%H:%M:%S}  {msg}"
+    print(text, flush=True)
+    try:
+        with open(ROOT / "watcher.log", "a", encoding="utf-8") as f:
+            f.write(text + "\n")
+    except Exception:
+        pass
 
 
 def safe_stem(name: str) -> str:
@@ -339,7 +346,7 @@ def poll_jobs(pending: dict, output_dir: Path) -> None:
         del pending[prompt_id]
 
 
-def main() -> None:
+def main(stop_event: threading.Event | None = None) -> None:
     for d in (INBOX_DEFAULT, RESULTS_DEFAULT, WORKING, PROCESSED, FAILED):
         d.mkdir(parents=True, exist_ok=True)
 
@@ -358,6 +365,9 @@ def main() -> None:
     down_cycles = 0
 
     while True:
+        if stop_event and stop_event.is_set():
+            log("Signal d'arret recu. Fermeture du watcher.")
+            break
         try:
             cfg = load_config()
             inbox_dir, output_dir = resolve_dirs(cfg)
@@ -378,7 +388,11 @@ def main() -> None:
         except Exception as exc:
             log(f"[boucle] erreur inattendue: {exc}")
 
-        time.sleep(POLL_SECONDS)
+        # Responsive sleep check
+        for _ in range(POLL_SECONDS):
+            if stop_event and stop_event.is_set():
+                break
+            time.sleep(1)
 
 
 if __name__ == "__main__":

@@ -11,6 +11,7 @@ import atexit
 import json
 import os
 import subprocess
+import threading
 import urllib.request
 from pathlib import Path
 
@@ -48,8 +49,11 @@ DEFAULTS = {
     "texture_size": 4096,
 }
 
-PROC: dict[str, subprocess.Popen | None] = {"comfyui": None, "watcher": None}
+PROC: dict[str, subprocess.Popen | None] = {"comfyui": None}
 LOGFILES: dict[str, object] = {}
+
+WATCHER_THREAD: threading.Thread | None = None
+WATCHER_STOP_EVENT: threading.Event | None = None
 
 
 # ------------------------------- Config -------------------------------------
@@ -99,6 +103,9 @@ def comfy_reachable() -> bool:
 
 
 def alive(name: str) -> bool:
+    if name == "watcher":
+        global WATCHER_THREAD
+        return WATCHER_THREAD is not None and WATCHER_THREAD.is_alive()
     p = PROC.get(name)
     return p is not None and p.poll() is None
 
@@ -132,18 +139,41 @@ def start_comfyui() -> str:
 
 
 def start_watcher() -> str:
+    global WATCHER_THREAD, WATCHER_STOP_EVENT
     if alive("watcher"):
         return "Watcher is already running."
-    fh = _open_log("watcher", WATCHER_LOG)
-    PROC["watcher"] = subprocess.Popen(
-        [str(PYTHON), "-s", str(WATCHER)],
-        cwd=str(ROOT), stdout=fh, stderr=subprocess.STDOUT,
-        creationflags=CREATE_NO_WINDOW,
+    
+    # Reset/clear log file
+    try:
+        WATCHER_LOG.write_text("", encoding="utf-8")
+    except Exception:
+        pass
+        
+    WATCHER_STOP_EVENT = threading.Event()
+    import watch_pixal3d
+    WATCHER_THREAD = threading.Thread(
+        target=watch_pixal3d.main,
+        args=(WATCHER_STOP_EVENT,),
+        daemon=True
     )
+    WATCHER_THREAD.start()
     return "Watcher started."
 
 
+def stop_watcher() -> str:
+    global WATCHER_THREAD, WATCHER_STOP_EVENT
+    if WATCHER_THREAD is None or not WATCHER_THREAD.is_alive():
+        return "Watcher was not running."
+    WATCHER_STOP_EVENT.set()
+    WATCHER_THREAD.join(timeout=5)
+    WATCHER_THREAD = None
+    WATCHER_STOP_EVENT = None
+    return "Watcher stopped."
+
+
 def stop_proc(name: str) -> str:
+    if name == "watcher":
+        return stop_watcher()
     p = PROC.get(name)
     if p is None or p.poll() is not None:
         PROC[name] = None
@@ -158,19 +188,19 @@ def stop_proc(name: str) -> str:
 
 
 def restart_watcher() -> str:
-    stop_proc("watcher")
+    stop_watcher()
     start_watcher()
     return "Watcher restarted (config.json reloaded)."
 
 
 def cleanup() -> None:
-    for name in ("watcher", "comfyui"):
-        p = PROC.get(name)
-        if p is not None and p.poll() is None:
-            try:
-                p.terminate()
-            except Exception:
-                pass
+    stop_watcher()
+    p = PROC.get("comfyui")
+    if p is not None and p.poll() is None:
+        try:
+            p.terminate()
+        except Exception:
+            pass
 
 
 atexit.register(cleanup)
