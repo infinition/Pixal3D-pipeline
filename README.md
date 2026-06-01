@@ -8,6 +8,11 @@ Built on top of [Pixal3D](https://huggingface.co/TencentARC/Pixal3D) via the
 ComfyUI API. Tested on an RTX 4070 Ti (12 GB VRAM). Each asset takes roughly
 5 to 6 minutes end to end.
 
+
+<img width="1686" height="1165" alt="image" src="https://github.com/user-attachments/assets/1c62b1aa-4e1e-4c88-a096-8b4a02b54d4e" />
+<img width="1597" height="783" alt="image" src="https://github.com/user-attachments/assets/d547abc4-2eb4-444f-a7cd-817f8539c373" />
+<img width="1592" height="782" alt="image" src="https://github.com/user-attachments/assets/6e2e384b-5e46-4756-bc81-451510de3d62" />
+
 ---
 
 ## How it works
