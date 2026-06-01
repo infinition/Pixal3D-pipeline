@@ -1,10 +1,9 @@
-"""Pixal3D - Panneau de controle (Gradio).
+"""Pixal3D - Control panel (Gradio).
 
-UI navigateur : demarre/arrete/redemarre ComfyUI et le watcher, configure les
-dossiers (locaux ou NAS) et tous les parametres de generation, affiche le
-journal du watcher en direct.
+Browser UI: start/stop/restart ComfyUI and the watcher, configure folders
+(local or NAS) and all generation parameters, display the watcher log live.
 
-Lance par START.bat. Ouvre http://127.0.0.1:7860 dans le navigateur.
+Launched by START.bat. Opens http://127.0.0.1:7860 in the browser.
 """
 from __future__ import annotations
 
@@ -17,7 +16,7 @@ from pathlib import Path
 
 import gradio as gr
 
-# ------------------------------- Chemins ------------------------------------
+# ------------------------------- Paths ------------------------------------
 ROOT = Path(__file__).resolve().parent                 # pipeline/
 PORTABLE = ROOT.parent / "ComfyUI_windows_portable"
 PYTHON = PORTABLE / "python_embeded" / "python.exe"
@@ -87,10 +86,10 @@ def save_config(inbox_dir, output_dir, nas_user, nas_password,
         "texture_size": int(texture_size),
     }
     CONFIG_PATH.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
-    return "**Reglages enregistres.** Appliques a la prochaine image traitee."
+    return "**Settings saved.** Applied to the next image processed."
 
 
-# --------------------------- Gestion processus ------------------------------
+# --------------------------- Process management -----------------------------
 def comfy_reachable() -> bool:
     try:
         urllib.request.urlopen(COMFY_URL + "/system_stats", timeout=4)
@@ -118,9 +117,9 @@ def _open_log(name: str, path: Path):
 
 def start_comfyui() -> str:
     if comfy_reachable():
-        return "ComfyUI est deja en marche."
+        return "ComfyUI is already running."
     if alive("comfyui"):
-        return "ComfyUI demarre deja..."
+        return "ComfyUI is already starting..."
     env = dict(os.environ)
     env["HF_HUB_DISABLE_XET"] = "1"
     fh = _open_log("comfyui", COMFY_LOG)
@@ -129,39 +128,39 @@ def start_comfyui() -> str:
         cwd=str(PORTABLE), env=env, stdout=fh, stderr=subprocess.STDOUT,
         creationflags=CREATE_NO_WINDOW,
     )
-    return "ComfyUI demarre (compter ~40 s avant qu'il soit pret)."
+    return "ComfyUI starting (~40 s before it is ready)."
 
 
 def start_watcher() -> str:
     if alive("watcher"):
-        return "Le watcher tourne deja."
+        return "Watcher is already running."
     fh = _open_log("watcher", WATCHER_LOG)
     PROC["watcher"] = subprocess.Popen(
         [str(PYTHON), "-s", str(WATCHER)],
         cwd=str(ROOT), stdout=fh, stderr=subprocess.STDOUT,
         creationflags=CREATE_NO_WINDOW,
     )
-    return "Watcher demarre."
+    return "Watcher started."
 
 
 def stop_proc(name: str) -> str:
     p = PROC.get(name)
     if p is None or p.poll() is not None:
         PROC[name] = None
-        return f"{name} n'etait pas en marche."
+        return f"{name} was not running."
     p.terminate()
     try:
         p.wait(timeout=10)
     except Exception:
         p.kill()
     PROC[name] = None
-    return f"{name} arrete."
+    return f"{name} stopped."
 
 
 def restart_watcher() -> str:
     stop_proc("watcher")
     start_watcher()
-    return "Watcher redemarre (recharge config.json)."
+    return "Watcher restarted (config.json reloaded)."
 
 
 def cleanup() -> None:
@@ -177,27 +176,27 @@ def cleanup() -> None:
 atexit.register(cleanup)
 
 
-# ------------------------------- Affichage ----------------------------------
+# ------------------------------- Display ------------------------------------
 def status_markdown() -> str:
     if comfy_reachable():
-        comfy = "**ComfyUI** : \U0001F7E2 en marche (pret)"
+        comfy = "**ComfyUI** : \U0001F7E2 running (ready)"
     elif alive("comfyui"):
-        comfy = "**ComfyUI** : \U0001F7E1 demarrage en cours..."
+        comfy = "**ComfyUI** : \U0001F7E1 starting..."
     else:
-        comfy = "**ComfyUI** : \U0001F534 arrete"
-    watcher = ("**Watcher** : \U0001F7E2 en marche" if alive("watcher")
-               else "**Watcher** : \U0001F534 arrete")
+        comfy = "**ComfyUI** : \U0001F534 stopped"
+    watcher = ("**Watcher** : \U0001F7E2 running" if alive("watcher")
+               else "**Watcher** : \U0001F534 stopped")
     return f"{comfy}  &nbsp;&nbsp;|&nbsp;&nbsp;  {watcher}"
 
 
 def tail_log(path: Path, lines: int = 200) -> str:
     if not path.exists():
-        return "(journal vide)"
+        return "(empty log)"
     try:
         content = path.read_text(encoding="utf-8", errors="replace").splitlines()
     except Exception as exc:
-        return f"(lecture impossible: {exc})"
-    return "\n".join(content[-lines:]) or "(journal vide)"
+        return f"(could not read log: {exc})"
+    return "\n".join(content[-lines:]) or "(empty log)"
 
 
 def refresh():
@@ -212,19 +211,19 @@ def open_folder(which: str) -> str:
         target = cfg["output_dir"].strip() or str(ROOT / "results")
     try:
         os.startfile(target)
-        return f"Dossier ouvert : {target}"
+        return f"Opened: {target}"
     except Exception as exc:
-        return f"Impossible d'ouvrir : {target} ({exc})"
+        return f"Could not open: {target} ({exc})"
 
 
 # --------------------------------- UI ---------------------------------------
 def build_ui() -> gr.Blocks:
     cfg = load_config()
-    with gr.Blocks(title="Pixal3D - Panneau de controle") as app:
-        gr.Markdown("# Pixal3D — Panneau de controle")
+    with gr.Blocks(title="Pixal3D - Control Panel") as app:
+        gr.Markdown("# Pixal3D - Control Panel")
         gr.Markdown(
-            "Depose tes images dans le **dossier d'entree** — les modeles 3D `.glb` "
-            "sortent dans le **dossier de sortie** (configurables ci-dessous)."
+            "Drop images into the **inbox folder** and `.glb` models will appear "
+            "in the **output folder** (both configurable below)."
         )
 
         status = gr.Markdown(status_markdown())
@@ -232,131 +231,127 @@ def build_ui() -> gr.Blocks:
 
         with gr.Row():
             with gr.Column():
-                gr.Markdown("### ComfyUI (moteur 3D)")
+                gr.Markdown("### ComfyUI (3D engine)")
                 with gr.Row():
-                    comfy_start = gr.Button("Demarrer", variant="primary")
-                    comfy_stop = gr.Button("Arreter")
+                    comfy_start = gr.Button("Start", variant="primary")
+                    comfy_stop = gr.Button("Stop")
             with gr.Column():
                 gr.Markdown("### Watcher (pipeline)")
                 with gr.Row():
-                    watcher_start = gr.Button("Demarrer", variant="primary")
-                    watcher_stop = gr.Button("Arreter")
-                    watcher_restart = gr.Button("Redemarrer")
+                    watcher_start = gr.Button("Start", variant="primary")
+                    watcher_stop = gr.Button("Stop")
+                    watcher_restart = gr.Button("Restart")
 
-        with gr.Accordion("Dossiers & NAS", open=True):
+        with gr.Accordion("Folders & NAS", open=True):
             inbox_dir = gr.Textbox(
-                value=cfg["inbox_dir"], label="Dossier d'entree (images a traiter)",
-                placeholder="Vide = pipeline/inbox (local)",
-                info="Dossier surveille. Local (D:\\images) ou reseau "
-                     "(\\\\192.168.1.75\\Downloads\\3D\\in). Vide = dossier local par defaut.",
+                value=cfg["inbox_dir"], label="Inbox folder (images to process)",
+                placeholder="Empty = pipeline/inbox (local)",
+                info="Watched folder. Local (D:\\images) or network "
+                     "(\\\\server\\share\\in). Leave empty for the local default.",
             )
             output_dir = gr.Textbox(
-                value=cfg["output_dir"], label="Dossier de sortie (modeles .glb)",
-                placeholder="Vide = pipeline/results (local)",
-                info="Ou sont deposes les .glb generes. Local ou reseau. "
-                     "Vide = dossier local par defaut.",
+                value=cfg["output_dir"], label="Output folder (.glb models)",
+                placeholder="Empty = pipeline/results (local)",
+                info="Where generated .glb files are placed. Local or network. "
+                     "Leave empty for the local default.",
             )
             with gr.Row():
                 nas_user = gr.Textbox(
-                    value=cfg["nas_user"], label="NAS - identifiant",
-                    info="Pour un dossier reseau protege. Vide si dossiers locaux.",
+                    value=cfg["nas_user"], label="NAS username",
+                    info="For a password-protected network share. Leave empty for local folders.",
                 )
                 nas_password = gr.Textbox(
-                    value=cfg["nas_password"], label="NAS - mot de passe",
-                    type="password", info="Stocke en clair dans config.json.",
+                    value=cfg["nas_password"], label="NAS password",
+                    type="password", info="Stored in plain text in config.json.",
                 )
 
-        with gr.Accordion("Reglages de generation", open=True):
-            gr.Markdown("#### Geometrie / precision du modele 3D")
+        with gr.Accordion("Generation settings", open=True):
+            gr.Markdown("#### Geometry / mesh precision")
             pipeline_type = gr.Dropdown(
                 ["1024_cascade", "1536_cascade"],
-                value=cfg["pipeline_type"], label="Type de pipeline",
-                info="Resolution interne. 1024 = recommande (12 Go VRAM). "
-                     "1536 = plus de detail mais risque de CUDA out of memory.",
+                value=cfg["pipeline_type"], label="Pipeline type",
+                info="Internal resolution. 1024 = recommended (12 GB VRAM). "
+                     "1536 = more detail but risks CUDA out of memory.",
             )
             steps = gr.Slider(
                 4, 50, value=int(cfg["steps"]), step=1,
-                label="Steps (etapes de generation)",
-                info="Iterations de debruitage (forme ET texture). Plus eleve = plus de "
-                     "detail et de fidelite, plus lent. 12 = rapide, 20 = qualite.",
+                label="Steps",
+                info="Denoising iterations (shape and texture). Higher = more detail, slower. "
+                     "12 = fast, 20 = quality.",
             )
             guidance = gr.Slider(
                 1.0, 15.0, value=float(cfg["guidance"]), step=0.5, label="Guidance",
-                info="A quel point la FORME 3D suit l'image. 7.5 = equilibre. "
-                     "Trop haut = artefacts ; trop bas = forme imprecise.",
+                info="How closely the 3D shape follows the image. 7.5 is a balanced default. "
+                     "Too high = artifacts, too low = imprecise shape.",
             )
             max_num_tokens = gr.Slider(
                 16384, 131072, value=int(cfg["max_num_tokens"]), step=16384,
-                label="Max tokens (precision geometrique)",
-                info="Budget de jetons de la structure 3D = finesse du maillage genere. "
-                     "Plus eleve = geometrie plus precise, mais beaucoup plus de VRAM "
-                     "(risque d'OOM au-dela de ~65000 sur 12 Go).",
+                label="Max tokens (geometric precision)",
+                info="Token budget for the 3D structure. Higher = finer mesh but much more VRAM. "
+                     "Stay below ~65000 on 12 GB.",
             )
             mesh_scale = gr.Slider(
-                0.1, 5.0, value=float(cfg["mesh_scale"]), step=0.1, label="Echelle du mesh",
-                info="Taille du modele 3D exporte. 1.0 = taille normale.",
+                0.1, 5.0, value=float(cfg["mesh_scale"]), step=0.1, label="Mesh scale",
+                info="Scale of the exported 3D model. 1.0 = normal size.",
             )
             camera_resolution = gr.Dropdown(
                 [384, 512, 768, 1024],
-                value=int(cfg["camera_resolution"]), label="Resolution d'analyse",
-                info="Resolution a laquelle l'image est analysee. Plus eleve = capte plus "
-                     "de detail, un peu plus lourd. 512 = standard.",
+                value=int(cfg["camera_resolution"]), label="Analysis resolution",
+                info="Resolution at which the image is analysed. Higher = more detail captured. "
+                     "512 is standard.",
             )
             remesh = gr.Checkbox(
-                value=bool(cfg["remesh"]), label="Remesh (retopologie propre)",
-                info="Recalcule une topologie de maillage propre et reguliere. "
-                     "Recommande pour des assets exploitables.",
+                value=bool(cfg["remesh"]), label="Remesh (clean topology)",
+                info="Recomputes a clean, uniform mesh topology. Recommended for usable assets.",
             )
             decimation_target = gr.Slider(
                 100_000, 5_000_000, value=int(cfg["decimation_target"]), step=100_000,
-                label="Cible de decimation (triangles)",
-                info="Nombre de triangles vise pour le mesh final. Plus eleve = mesh plus "
-                     "dense et detaille, fichier .glb plus gros.",
+                label="Decimation target (triangles)",
+                info="Target triangle count for the final mesh. Higher = denser mesh, larger .glb.",
             )
 
             gr.Markdown("#### Texture")
             texture_guidance = gr.Slider(
                 0.5, 3.0, value=float(cfg["texture_guidance"]), step=0.1,
                 label="Texture guidance",
-                info="Fidelite de la texture a l'image source. Plus eleve = texture plus "
-                     "proche de la photo d'origine.",
+                info="How closely the texture follows the source image. "
+                     "Higher = closer to the original photo.",
             )
             texture_size = gr.Dropdown(
                 [1024, 2048, 4096],
-                value=int(cfg["texture_size"]), label="Taille de texture (pixels)",
-                info="Resolution de la texture. 2048 = standard. 4096 = tres net, "
-                     "fichier plus lourd.",
+                value=int(cfg["texture_size"]), label="Texture size (pixels)",
+                info="Texture resolution. 2048 = standard. 4096 = sharp detail, larger file.",
             )
 
-            gr.Markdown("#### Detourage & cadrage")
+            gr.Markdown("#### Background removal & framing")
             rembg_model = gr.Dropdown(
                 ["isnet-general-use", "birefnet-general", "u2net"],
-                value=cfg["rembg_model"], label="Modele de detourage",
-                info="Retire le fond de l'image. isnet = bon compromis. "
-                     "birefnet = decoupe plus precise mais plus lourd. u2net = leger.",
+                value=cfg["rembg_model"], label="Background removal model",
+                info="Removes the image background. isnet = good default. "
+                     "birefnet = more precise but heavier. u2net = lightweight.",
             )
             camera_mode = gr.Dropdown(
                 ["moge", "manual"],
-                value=cfg["camera_mode"], label="Mode camera",
-                info="moge = cadrage/profondeur estimes automatiquement. "
-                     "manual = cadrage fixe.",
+                value=cfg["camera_mode"], label="Camera mode",
+                info="moge = depth and framing estimated automatically. "
+                     "manual = fixed framing.",
             )
 
-            save_btn = gr.Button("Enregistrer les reglages", variant="primary")
+            save_btn = gr.Button("Save settings", variant="primary")
             save_msg = gr.Markdown("")
 
-        gr.Markdown("### Journal du watcher")
+        gr.Markdown("### Watcher log")
         log_box = gr.Textbox(
             value=tail_log(WATCHER_LOG), lines=18, max_lines=18, autoscroll=True,
             show_label=False, interactive=False,
         )
 
         with gr.Row():
-            open_inbox = gr.Button("Ouvrir le dossier d'entree")
-            open_results = gr.Button("Ouvrir le dossier de sortie")
-        gr.Markdown(f"Interface ComfyUI (optionnel) : [{COMFY_URL}]({COMFY_URL})")
+            open_inbox = gr.Button("Open inbox folder")
+            open_results = gr.Button("Open output folder")
+        gr.Markdown(f"ComfyUI interface (optional): [{COMFY_URL}]({COMFY_URL})")
 
-        # --- Cablage (apres creation de tous les composants) ---
+        # --- Wiring ---
         comfy_start.click(lambda: start_comfyui(), outputs=action_msg)
         comfy_stop.click(lambda: stop_proc("comfyui"), outputs=action_msg)
         watcher_start.click(lambda: start_watcher(), outputs=action_msg)
@@ -380,10 +375,10 @@ def build_ui() -> gr.Blocks:
 
 
 if __name__ == "__main__":
-    print("Demarrage automatique de ComfyUI et du watcher...", flush=True)
+    print("Auto-starting ComfyUI and watcher...", flush=True)
     print(" - " + start_comfyui(), flush=True)
     print(" - " + start_watcher(), flush=True)
-    print("Ouverture du panneau sur http://127.0.0.1:7860 ...", flush=True)
+    print("Opening panel at http://127.0.0.1:7860 ...", flush=True)
     build_ui().launch(
         server_name="127.0.0.1", server_port=7860,
         inbrowser=True, quiet=True, theme=gr.themes.Soft(),
