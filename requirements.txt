@@ -1,0 +1,7 @@
+# Pipeline requirements (watcher + control panel)
+# Install into the embedded Python:
+#   ComfyUI_windows_portable\python_embeded\python.exe -m pip install -r requirements.txt
+
+gradio>=4.0.0
+rembg[gpu]
+pillow>=9.0.0

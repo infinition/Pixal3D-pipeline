@@ -89,9 +89,31 @@ it left off if the download is interrupted.
 
 ### 5. Install Python dependencies
 
+Two requirements files cover different parts of the stack.
+
+**Pipeline** (watcher + control panel):
+
+```bat
+ComfyUI_windows_portable\python_embeded\python.exe -m pip install -r requirements.txt
+```
+
+**Pixal3D ComfyUI node** (model dependencies, no flash_attn):
+
 ```bat
 ComfyUI_windows_portable\python_embeded\python.exe -m pip install ^
-    gradio rembg -r _downloads\requirements-pixal3d-nonatten.txt
+    -r _downloads\requirements-comfyui-node.txt
+```
+
+Then install the prebuilt CUDA wheels from `_downloads/wheels/` (flash_attn,
+cumesh, drtk, o_voxel, flex_gemm):
+
+```bat
+ComfyUI_windows_portable\python_embeded\python.exe -m pip install ^
+    _downloads\wheels\flash_attn-2.8.4+d20260328cu130torch2.11.0cxx11abiTRUE-cp313-cp313-win_amd64.whl ^
+    _downloads\wheels\cumesh_vb-1.0+cu130torch2.11-cp313-cp313-win_amd64.whl ^
+    _downloads\wheels\drtk-0.1.0+cu130torch2.11-cp313-cp313-win_amd64.whl ^
+    _downloads\wheels\o_voxel_vb_ap-0.0.1+cu130torch2.11-cp313-cp313-win_amd64.whl ^
+    _downloads\wheels\flex_gemm_ap-1.0.0+cu130torch2.11-cp313-cp313-win_amd64.whl
 ```
 
 ### 6. Configure
@@ -212,9 +234,11 @@ Pixal3D-pipeline/
     pixal3d_pipeline.json                            # Pipeline workflow (JSON)
     pixal3d_example_workflow.png                     # Drag into ComfyUI to load
     pixal3d_low_vram_cam_control_example_workflow.png # Low VRAM variant with camera control
+  requirements.txt                    # Pipeline deps (gradio, rembg) -- install first
   _downloads/
     hf_grab.ps1                     # HuggingFace batch downloader
-    requirements-pixal3d-nonatten.txt
+    requirements-comfyui-node.txt   # Pixal3D node deps (no flash_attn)
+    requirements-pixal3d-nonatten.txt  # Same file, legacy name
     wheels/                         # Pre-built CUDA wheels (git-ignored)
   ComfyUI_windows_portable/         # ComfyUI install (git-ignored, install separately)
 ```

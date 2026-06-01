@@ -12,6 +12,7 @@ ComfyUI_windows_portable/
 
 # -----------------------------------------------------------------------
 # Downloads folder — large archives and pre-built wheels
+# (requirements files in _downloads/ are tracked)
 # -----------------------------------------------------------------------
 _downloads/*.7z
 _downloads/wheels/

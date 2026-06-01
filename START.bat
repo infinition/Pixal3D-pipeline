@@ -1,13 +1,13 @@
 @echo off
 REM ====================================================================
-REM  Pixal3D - Lanceur
-REM  Ouvre le panneau de controle (navigateur). Le panneau demarre
-REM  automatiquement ComfyUI + le watcher, et permet de tout piloter.
-REM  Garde CETTE fenetre ouverte : la fermer arrete tout.
+REM  Pixal3D - Launcher
+REM  Opens the control panel in your browser. The panel starts ComfyUI
+REM  and the watcher automatically.
+REM  Keep this window open -- closing it stops everything.
 REM ====================================================================
-title Pixal3D - Panneau de controle
+title Pixal3D - Control Panel
 cd /d "%~dp0pipeline"
 "..\ComfyUI_windows_portable\python_embeded\python.exe" -s "control_panel.py"
 echo.
-echo Panneau ferme - ComfyUI et le watcher ont ete arretes.
+echo Control panel closed - ComfyUI and the watcher have been stopped.
 pause
