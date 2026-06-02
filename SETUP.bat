@@ -121,14 +121,36 @@ if exist "%NODE_DIR%\install.py" (
 echo.
 
 REM ---------------------------------------------------------------
-REM  4. Custom node dependencies (runs the node's own installer)
+REM  4. Custom node dependencies
+REM     The node's requirements.txt pins natten==0.21.6. natten has no Windows
+REM     wheel and fails to build from source -- and because pip installs from a
+REM     -r file atomically, that one failure aborts the whole install and takes
+REM     diffusers / trimesh / accelerate / timm / utils3d down with it. natten
+REM     is optional at runtime (the node falls back when it is absent), so we
+REM     install everything EXCEPT natten. triton (triton-windows) is needed by
+REM     flex_gemm and is deliberately kept out of the node requirements, so we
+REM     add it explicitly here.
 REM ---------------------------------------------------------------
 echo ------------------------------------------------------------
 echo  Step 4/6 - Custom node dependencies
 echo ------------------------------------------------------------
-if exist "%NODE_DIR%\install.py" (
-    "%PY%" -s "%NODE_DIR%\install.py"
-    echo [OK]  Custom node base dependencies installed.
+if exist "%NODE_DIR%\requirements.txt" (
+    findstr /v /i "natten" "%NODE_DIR%\requirements.txt" > "%TEMP%\pxl_reqs.txt"
+    echo [..]  Installing node dependencies ^(natten skipped: optional, no Windows build^)...
+    "%PY%" -s -m pip install -r "%TEMP%\pxl_reqs.txt"
+    set "REQ_ERR=!errorlevel!"
+    del "%TEMP%\pxl_reqs.txt" >nul 2>&1
+    REM triton-windows (flex_gemm) and zstandard (o_voxel) are runtime deps of the
+    REM CUDA wheels but are not in the node requirements; the wheels install with
+    REM --no-deps so we add them here.
+    echo [..]  Installing triton-windows + zstandard ^(CUDA wheel runtime deps^)...
+    "%PY%" -s -m pip install triton-windows zstandard
+    if errorlevel 1 set "REQ_ERR=1"
+    if "!REQ_ERR!"=="0" (
+        echo [OK]  Custom node dependencies installed.
+    ) else (
+        echo [WARN] Some node dependencies failed to install. Check the log above.
+    )
 ) else (
     echo [SKIP] Custom node not found; skipping its dependencies.
 )
