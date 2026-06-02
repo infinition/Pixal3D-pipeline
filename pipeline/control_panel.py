@@ -49,6 +49,31 @@ DEFAULTS = {
     "texture_size": 4096,
 }
 
+# Named VRAM presets. Picking one in the panel fills pipeline_type,
+# max_num_tokens and texture_size to values that fit the card. "Custom"
+# leaves whatever is currently set untouched.
+#
+# The 12 GB row is the only one the author hardware-tested (RTX 4070 Ti).
+# The 16/24/32 GB rows are scaled up from there: larger cards can afford the
+# 1536 cascade and a bigger token budget. Treat them as sane starting points,
+# not guarantees -- if a card OOMs, drop max tokens by one step.
+VRAM_PRESETS: dict[str, dict | None] = {
+    "Custom (keep current values)": None,
+    "12 GB  -  RTX 3060 / 4070 Ti": {
+        "pipeline_type": "1024_cascade", "max_num_tokens": 49152, "texture_size": 2048,
+    },
+    "16 GB  -  RTX 4080 / 4060 Ti 16G": {
+        "pipeline_type": "1024_cascade", "max_num_tokens": 65536, "texture_size": 4096,
+    },
+    "24 GB  -  RTX 3090 / 4090": {
+        "pipeline_type": "1536_cascade", "max_num_tokens": 98304, "texture_size": 4096,
+    },
+    "32 GB+  -  RTX 5090": {
+        "pipeline_type": "1536_cascade", "max_num_tokens": 131072, "texture_size": 4096,
+    },
+}
+CUSTOM_PRESET = "Custom (keep current values)"
+
 PROC: dict[str, subprocess.Popen | None] = {"comfyui": None}
 LOGFILES: dict[str, object] = {}
 
@@ -91,6 +116,59 @@ def save_config(inbox_dir, output_dir, nas_user, nas_password,
     }
     CONFIG_PATH.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
     return "**Settings saved.** Applied to the next image processed."
+
+
+# ------------------------------ GPU / presets -------------------------------
+def detect_gpu() -> tuple[str | None, int | None]:
+    """Return (gpu_name, vram_mib) from nvidia-smi, or (None, None)."""
+    try:
+        out = subprocess.run(
+            ["nvidia-smi", "--query-gpu=name,memory.total",
+             "--format=csv,noheader,nounits"],
+            capture_output=True, text=True, timeout=10,
+            creationflags=CREATE_NO_WINDOW,
+        ).stdout.strip().splitlines()
+        if not out:
+            return None, None
+        name, mem = out[0].split(",")
+        return name.strip(), int(mem.strip())
+    except Exception:
+        return None, None
+
+
+def recommend_preset(vram_mib: int | None) -> str:
+    """Closest preset name for the detected VRAM (MiB)."""
+    if vram_mib is None:
+        return CUSTOM_PRESET
+    if vram_mib >= 30000:
+        return "32 GB+  -  RTX 5090"
+    if vram_mib >= 22000:
+        return "24 GB  -  RTX 3090 / 4090"
+    if vram_mib >= 15000:
+        return "16 GB  -  RTX 4080 / 4060 Ti 16G"
+    return "12 GB  -  RTX 3060 / 4070 Ti"
+
+
+def gpu_banner() -> str:
+    name, vram = detect_gpu()
+    if name is None:
+        return "**GPU**: not detected (nvidia-smi unavailable)."
+    rec = recommend_preset(vram).split("  -")[0].strip()
+    return (f"**GPU**: {name} — {vram / 1024:.0f} GB VRAM detected. "
+            f"Suggested preset: **{rec}**.")
+
+
+def apply_preset(preset_name: str):
+    """Push a preset's values into the pipeline_type / max_num_tokens /
+    texture_size widgets. Custom leaves them as-is."""
+    p = VRAM_PRESETS.get(preset_name)
+    if not p:
+        return gr.update(), gr.update(), gr.update()
+    return (
+        gr.update(value=p["pipeline_type"]),
+        gr.update(value=p["max_num_tokens"]),
+        gr.update(value=p["texture_size"]),
+    )
 
 
 # --------------------------- Process management -----------------------------
@@ -296,6 +374,16 @@ def build_ui() -> gr.Blocks:
                 )
 
         with gr.Accordion("Generation settings", open=True):
+            gr.Markdown("#### VRAM preset")
+            gr.Markdown(gpu_banner())
+            vram_preset = gr.Dropdown(
+                list(VRAM_PRESETS.keys()),
+                value=CUSTOM_PRESET, label="VRAM preset",
+                info="One-click sizing for your card: sets pipeline type, max tokens "
+                     "and texture size below. Pick Custom to tune by hand. "
+                     "Remember to press Save settings after.",
+            )
+
             gr.Markdown("#### Geometry / mesh precision")
             pipeline_type = gr.Dropdown(
                 ["1024_cascade", "1536_cascade"],
@@ -389,6 +477,10 @@ def build_ui() -> gr.Blocks:
         watcher_restart.click(lambda: restart_watcher(), outputs=action_msg)
         open_inbox.click(lambda: open_folder("inbox"), outputs=action_msg)
         open_results.click(lambda: open_folder("output"), outputs=action_msg)
+        vram_preset.change(
+            apply_preset, inputs=vram_preset,
+            outputs=[pipeline_type, max_num_tokens, texture_size],
+        )
         save_btn.click(
             save_config,
             inputs=[inbox_dir, output_dir, nas_user, nas_password,

@@ -1,4 +1,6 @@
-# Pixal3D Pipeline
+﻿# Pixal3D Pipeline
+
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) ![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white) ![Windows](https://img.shields.io/badge/Windows-0078D4?style=flat&logo=windows&logoColor=white) [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/infinition)
 
 A batch automation layer that turns images into 3D assets (.glb) with no
 manual intervention. Drop an image into a watched folder and a ready-to-use
@@ -47,6 +49,26 @@ a regular photo and the alpha cutout is handled automatically.
 ---
 
 ## Setup
+
+### Quick path (recommended)
+
+If you just want it running, three steps:
+
+1. **Clone the repo** and **extract the ComfyUI portable build** into it (steps 1
+   and 2 below).
+2. Double-click **`SETUP.bat`**. It detects your GPU, installs every dependency
+   (pipeline + custom node + the prebuilt CUDA wheels, downloaded automatically
+   from [Pozzetti's cuda-wheels](https://github.com/PozzettiAndrea/cuda-wheels) —
+   no manual wheel hunting), copies the default config, verifies the kernels, and
+   offers to download the ~24 GB model weights. Safe to re-run — finished steps
+   are skipped.
+3. Double-click **`START.bat`**.
+
+`SETUP.bat` also prints the **VRAM preset** that matches your card. Select it later
+in the control panel (see [VRAM presets](#vram-presets)).
+
+If `SETUP.bat` reports a problem, or you want to understand each piece, follow the
+manual steps below.
 
 ### 1. Clone the repo
 
@@ -107,22 +129,43 @@ ComfyUI_windows_portable\python_embeded\python.exe -m pip install -r requirement
 ```
 
 #### B. Install Custom Node Dependencies & CUDA Wheels
-You can install these automatically or manually:
 
-- **Automatic (Recommended)**:
-  Run the automated installer script provided inside the custom node folder using ComfyUI's embedded Python:
-  ```bat
-  cd ComfyUI_windows_portable\ComfyUI\custom_nodes\Pixal3D-ComfyUI
-  ..\..\..\python_embeded\python.exe install.py
-  ```
-  This script will automatically detect your configuration and download/install the appropriate prebuilt wheels (from Wildminder's HuggingFace repository or other trusted wheel hosts).
+The custom node needs five prebuilt CUDA kernel wheels. **You do not have to build
+them yourself** — `SETUP.bat` (or the helper below) downloads exact-match wheels for
+this stack (**CUDA 13.0 / PyTorch 2.11 / Python 3.13**, `win_amd64`) from
+[Andrea Pozzetti's cuda-wheels repo](https://github.com/PozzettiAndrea/cuda-wheels).
 
-- **Manual (Advanced)**:
-  If the automated script fails, you will need to find the prebuilt wheels matching your Python and CUDA versions (for example, from [Pozzetti's CUDA Wheels repo](https://github.com/PozzettiAndrea/cuda-wheels/releases) or HuggingFace hosts) and install them manually:
+- **Automatic (recommended)** — already handled by `SETUP.bat`. To do just this
+  step on its own:
   ```bat
-  ComfyUI_windows_portable\python_embeded\python.exe -m pip install <path_to_wheel>.whl
+  cd _downloads
+  powershell -ExecutionPolicy Bypass -File get_wheels.ps1 -Dest .\wheels
+  ..\ComfyUI_windows_portable\python_embeded\python.exe -m pip install --no-deps wheels\*.whl
   ```
-  *(Once installed, you can use the **Pixal3D Environment Check** node inside ComfyUI to verify that all kernels are correctly loaded).*
+  Then install the node's own Python deps:
+  ```bat
+  ComfyUI_windows_portable\python_embeded\python.exe ComfyUI\custom_nodes\Pixal3D-ComfyUI\install.py
+  ```
+
+- **Manual (direct links)** — the exact wheels for this stack
+  (`cu130 / torch2.11 / cp313 / win_amd64`):
+  | Kernel | Wheel |
+  |--------|-------|
+  | flash_attn | [flash_attn-2.8.3](https://github.com/PozzettiAndrea/cuda-wheels/releases/download/flash_attn-latest/flash_attn-2.8.3+cu130torch2.11-cp313-cp313-win_amd64.whl) |
+  | flex_gemm | [flex_gemm_ap-1.0.0](https://github.com/PozzettiAndrea/cuda-wheels/releases/download/flex_gemm_ap-latest/flex_gemm_ap-1.0.0+cu130torch2.11-cp313-cp313-win_amd64.whl) |
+  | cumesh | [cumesh_vb-1.0](https://github.com/PozzettiAndrea/cuda-wheels/releases/download/cumesh_vb-latest/cumesh_vb-1.0+cu130torch2.11-cp313-cp313-win_amd64.whl) |
+  | o_voxel | [o_voxel_vb_ap-0.0.1](https://github.com/PozzettiAndrea/cuda-wheels/releases/download/o_voxel_vb_ap-latest/o_voxel_vb_ap-0.0.1+cu130torch2.11-cp313-cp313-win_amd64.whl) |
+  | drtk | [drtk-0.1.0](https://github.com/PozzettiAndrea/cuda-wheels/releases/download/drtk-latest/drtk-0.1.0+cu130torch2.11-cp313-cp313-win_amd64.whl) |
+
+  ```bat
+  ComfyUI_windows_portable\python_embeded\python.exe -m pip install --no-deps <path_to_wheel>.whl
+  ```
+  If you are on a **different** Python/PyTorch/CUDA combination, browse the
+  [cuda-wheels releases](https://github.com/PozzettiAndrea/cuda-wheels/releases)
+  for a matching `cpXXX / torchX.Y / cuXXX` build.
+
+  *(Once installed, use the **Pixal3D Environment Check** node inside ComfyUI to
+  verify that all kernels load.)*
 
 ### 6. Configure
 
@@ -165,7 +208,7 @@ anything.
 
 Double-click `START.bat`.
 
-This opens a console window (keep it open -- closing it stops everything) and
+This opens a console window (keep it open; closing it stops everything) and
 launches the control panel at `http://127.0.0.1:7860`.
 
 The panel starts ComfyUI and the watcher automatically. Wait about 40 seconds
@@ -177,19 +220,44 @@ for ComfyUI to finish loading, then drop images into the inbox folder.
 
 Everything is managed from `http://127.0.0.1:7860`:
 
-- **Status** -- ComfyUI and Watcher indicators, refreshed live.
-- **Start / Stop / Restart** -- controls for both processes independently.
-- **Folders** -- inbox and output paths (local or network). Leave empty to
+- **Status**: ComfyUI and Watcher indicators, refreshed live.
+- **Start / Stop / Restart**: controls for both processes independently.
+- **Folders**: inbox and output paths (local or network). Leave empty to
   use the default local folders inside `pipeline/`.
-- **NAS credentials** -- fill in only if using a password-protected network share.
-- **Generation settings** -- all parameters with explanations, applied on
+- **NAS credentials**: fill in only if using a password-protected network share.
+- **Generation settings**: all parameters with explanations, applied on
   the next image after saving.
-- **Watcher log** -- live feed of rembg, queue, success, and failure events.
-- **Open folder buttons** -- opens inbox or output in Explorer.
+- **Watcher log**: live feed of rembg, queue, success, and failure events.
+- **Open folder buttons**: opens inbox or output in Explorer.
 
 ---
 
 ## Generation parameters
+
+### VRAM presets
+
+The control panel has a **VRAM preset** dropdown at the top of *Generation
+settings*. It auto-detects your card (via `nvidia-smi`) and suggests the closest
+preset. Picking one fills `pipeline_type`, `max_num_tokens` and `texture_size` in
+one click; press **Save settings** to apply it to the next image.
+
+| Preset | Example cards | `pipeline_type` | `max_num_tokens` | `texture_size` |
+|--------|---------------|-----------------|------------------|----------------|
+| **12 GB** | RTX 3060, 4070 Ti | `1024_cascade` | 49152 | 2048 |
+| **16 GB** | RTX 4080, 4060 Ti 16G | `1024_cascade` | 65536 | 4096 |
+| **24 GB** | RTX 3090, 4090 | `1536_cascade` | 98304 | 4096 |
+| **32 GB+** | RTX 5090 | `1536_cascade` | 131072 | 4096 |
+
+Only the **12 GB** row is hardware-tested (RTX 4070 Ti). The larger rows scale up
+from there — bigger cards can afford the `1536_cascade` and a larger token budget.
+They are solid starting points, not guarantees: if a card hits CUDA out of memory,
+drop `max_num_tokens` by one step and retry. Choose **Custom** to leave the values
+below untouched and tune by hand.
+
+**Running on a 5090 / 32 GB?** Yes — there is no hard requirement for a 5090, the
+pipeline was built and tested on a 12 GB card, but a 32 GB card lets you run the
+full-detail `1536_cascade` at 131072 tokens without OOM. Pick the **32 GB+**
+preset and go.
 
 ### Geometry
 
@@ -224,13 +292,14 @@ Everything is managed from `http://127.0.0.1:7860`:
 
 ```
 Pixal3D-pipeline/
+  SETUP.bat                         # Run once: installs deps, wheels, config
   START.bat                         # Double-click to launch everything
   README.md
   .gitignore
   pipeline/
     control_panel.py                # Gradio control panel
     watch_pixal3d.py                # Watcher and ComfyUI API client
-    config.json.example             # Template -- copy to config.json
+    config.json.example             # Template; copy to config.json
     config.json                     # Your local config (git-ignored)
     run_watcher.bat                 # Launch watcher alone (debugging)
     inbox/                          # Default input folder (git-ignored)
@@ -242,12 +311,13 @@ Pixal3D-pipeline/
     pixal3d_pipeline.json                            # Pipeline workflow (JSON)
     pixal3d_example_workflow.png                     # Drag into ComfyUI to load
     pixal3d_low_vram_cam_control_example_workflow.png # Low VRAM variant with camera control
-  requirements.txt                    # Pipeline deps (gradio, rembg) -- install first
+  requirements.txt                    # Pipeline deps (gradio, rembg); install first
   _downloads/
-    hf_grab.ps1                     # HuggingFace batch downloader
+    hf_grab.ps1                     # HuggingFace batch downloader (model weights)
+    get_wheels.ps1                  # Downloads the CUDA wheels from Pozzetti's repo
     requirements-comfyui-node.txt   # Pixal3D node deps (no flash_attn)
     requirements-pixal3d-nonatten.txt  # Same file, legacy name
-    wheels/                         # Pre-built CUDA wheels (git-ignored)
+    wheels/                         # Pre-built CUDA wheels (git-ignored, fetched by get_wheels.ps1)
   ComfyUI_windows_portable/         # ComfyUI install (git-ignored, install separately)
 ```
 
@@ -261,7 +331,7 @@ The `workflows/` folder contains two formats:
   drag these directly into the ComfyUI canvas to load the embedded workflow.
   This is the standard ComfyUI sharing format: the image is a screenshot of the
   graph and the JSON is embedded in the PNG metadata simultaneously.
-- **JSON file** (`pixal3d_pipeline.json`) -- the pipeline-specific workflow,
+- **JSON file** (`pixal3d_pipeline.json`): the pipeline-specific workflow,
   load via ComfyUI menu > Load.
 
 To generate a PNG version of your own workflow (after customising it), open it
@@ -269,14 +339,14 @@ in ComfyUI then use Menu > Export (image PNG). Drop the result into `workflows/`
 
 The workflow contains:
 
-- **Pixal3DModelLoader** -- loads the model weights with `dynamic_vram` and `flash_attn` auto-selection
-- **LoadImage** -- manual image input for testing outside the watcher
-- **Pixal3DImageTo3D** -- geometry and texture generation
-- **Pixal3DExportGLB** -- exports the result as a `.glb` with decimation and remesh
-- **Preview3D** -- 3D preview directly in the ComfyUI canvas
-- **Pixal3DEnvironmentCheck** -- run this first if anything fails; paste the output when reporting issues
+- **Pixal3DModelLoader**: loads the model weights with `dynamic_vram` and `flash_attn` auto-selection
+- **LoadImage**: manual image input for testing outside the watcher
+- **Pixal3DImageTo3D**: geometry and texture generation
+- **Pixal3DExportGLB**: exports the result as a `.glb` with decimation and remesh
+- **Preview3D**: 3D preview directly in the ComfyUI canvas
+- **Pixal3DEnvironmentCheck**: run this first if anything fails; paste the output when reporting issues
 
-When driven by the watcher the `LoadImage` node is bypassed -- the watcher
+When driven by the watcher the `LoadImage` node is bypassed; the watcher
 submits the preprocessed (background-removed) image directly via the API and
 reads the output `.glb` from the ComfyUI output folder.
 
@@ -286,8 +356,8 @@ reads the output `.glb` from the ComfyUI output folder.
 
 | Location | What you see |
 |----------|--------------|
-| Control panel -- Status | ComfyUI and Watcher running or stopped |
-| Control panel -- Watcher log | Live processing events |
+| Control panel: Status | ComfyUI and Watcher running or stopped |
+| Control panel: Watcher log | Live processing events |
 | Output folder | .glb files appearing as jobs complete |
 | `pipeline/failed/` | Images that could not be processed |
 | `http://127.0.0.1:8188` | ComfyUI queue (optional, for debugging) |
