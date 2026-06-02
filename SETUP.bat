@@ -220,18 +220,27 @@ if exist "%NODE_DIR%\install.py" (
 )
 echo.
 
-if exist "%MODELS%\" (
-    echo [OK]  Model folder present: %MODELS%
-    echo       ^(if a job fails with "model not found", re-run hf_grab.ps1^)
+REM The pipeline needs THREE model sources, not just the main weights:
+REM   1. TencentARC/Pixal3D                       -> models\Pixal3D\  (~24 GB)
+REM   2. camenduru/dinov3-vitl16-pretrain-...      -> models\Pixal3D\  (~1.2 GB, image encoder)
+REM   3. Comfy-Org/MoGe (flat)                     -> models\geometry_estimation\ (depth/camera)
+REM Downloads are resumable and skip files already complete, so re-running is cheap.
+set "MOGE=ComfyUI_windows_portable\ComfyUI\models\geometry_estimation\moge_1_vitl_fp16.safetensors"
+if exist "%MOGE%" (
+    echo [OK]  Model weights present ^(Pixal3D + DINOv3 + MoGe^).
+    echo       ^(re-run SETUP.bat to fetch any gaps if a job reports a missing model^)
 ) else (
-    echo [TODO] Model weights are NOT downloaded yet ^(~24 GB^).
-    set /p DLNOW="       Download them now with hf_grab.ps1? [y/N] "
+    echo [TODO] Model weights not fully downloaded yet ^(~25 GB across 3 sources^).
+    set /p DLNOW="       Download them now? [y/N] "
     if /i "!DLNOW!"=="y" (
-        echo [..]  Starting download ^(resumable; safe to interrupt^)...
-        powershell -ExecutionPolicy Bypass -NoProfile -File "_downloads\hf_grab.ps1" -Base "ComfyUI_windows_portable\ComfyUI\models\Pixal3D" -Repos "TencentARC/Pixal3D"
+        echo [..]  1/3 Pixal3D main weights ^(~24 GB, resumable^)...
+        powershell -ExecutionPolicy Bypass -NoProfile -File "_downloads\hf_grab.ps1" -Base "%MODELS%" -Repos "TencentARC/Pixal3D"
+        echo [..]  2/3 DINOv3 image encoder ^(~1.2 GB^)...
+        powershell -ExecutionPolicy Bypass -NoProfile -File "_downloads\hf_grab.ps1" -Base "%MODELS%" -Repos "camenduru/dinov3-vitl16-pretrain-lvd1689m"
+        echo [..]  3/3 MoGe geometry estimator...
+        powershell -ExecutionPolicy Bypass -NoProfile -File "_downloads\hf_grab.ps1" -Base "ComfyUI_windows_portable\ComfyUI\models" -Repos "Comfy-Org/MoGe" -Flat -Exclude "README|LICENSE|gitattributes"
     ) else (
-        echo       Skipped. Download later by re-running SETUP.bat, or directly:
-        echo         powershell -ExecutionPolicy Bypass -File "_downloads\hf_grab.ps1" -Base "ComfyUI_windows_portable\ComfyUI\models\Pixal3D" -Repos "TencentARC/Pixal3D"
+        echo       Skipped. Re-run SETUP.bat later, or fetch the 3 sources by hand ^(see README step 4^).
     )
 )
 echo.

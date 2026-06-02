@@ -43,8 +43,8 @@ a regular photo and the alpha cutout is handled automatically.
 - Windows 10/11
 - NVIDIA GPU with at least 12 GB VRAM (16 GB recommended for higher settings)
 - ComfyUI Windows portable build with the [Saganaki22/Pixal3D-ComfyUI](https://github.com/Saganaki22/Pixal3D-ComfyUI) custom node installed
-- Python packages & CUDA wheels: installed automatically via the custom node's installer or manual wheel installation
-- Gradio: `pip install gradio` (installed automatically via `requirements.txt`)
+- Python packages & CUDA wheels: installed automatically by `SETUP.bat` (deps,
+  prebuilt wheels, and the runtime extras the node installer misses)
 
 ---
 
@@ -60,7 +60,7 @@ If you just want it running, three steps:
    (pipeline + custom node + the prebuilt CUDA wheels, downloaded automatically
    from [Pozzetti's cuda-wheels](https://github.com/PozzettiAndrea/cuda-wheels) —
    no manual wheel hunting), copies the default config, verifies the kernels, and
-   offers to download the ~24 GB model weights. Safe to re-run — finished steps
+   offers to download the ~25 GB of model weights (3 sources). Safe to re-run — finished steps
    are skipped.
 3. Double-click **`START.bat`**.
 
@@ -100,22 +100,35 @@ Install the **Pixal3D-ComfyUI** custom node by **Saganaki22**. You can do this i
 
 ### 4. Download the model weights
 
-The models are **not downloaded automatically** at runtime. Run `hf_grab.ps1`
-once before the first use. It handles resumable downloads and skips files that
-are already complete.
+The models are **not downloaded automatically** at runtime (`SETUP.bat` fetches
+them for you). The pipeline needs **three** model sources, not just the main
+weights — a job fails part-way if any are missing:
+
+| Source | Goes to | Size | Used for |
+|--------|---------|------|----------|
+| `TencentARC/Pixal3D` | `models/Pixal3D/` | ~24 GB | main shape + texture weights |
+| `camenduru/dinov3-vitl16-pretrain-lvd1689m` | `models/Pixal3D/` | ~1.2 GB | DINOv3 image encoder |
+| `Comfy-Org/MoGe` | `models/geometry_estimation/` | small | depth / camera framing (`camera_mode=moge`) |
+
+To fetch them by hand with `hf_grab.ps1` (resumable, skips complete files):
 
 ```powershell
 # Optional: set a HuggingFace token for gated repos
 $env:HF_TOKEN = "hf_your_token_here"
 
 cd _downloads
+# 1+2: main weights and DINOv3 encoder (same Pixal3D folder)
 .\hf_grab.ps1 `
   -Base "..\ComfyUI_windows_portable\ComfyUI\models\Pixal3D" `
-  -Repos @("TencentARC/Pixal3D")
+  -Repos @("TencentARC/Pixal3D", "camenduru/dinov3-vitl16-pretrain-lvd1689m")
+# 3: MoGe, placed flat into models\geometry_estimation\
+.\hf_grab.ps1 -Flat -Exclude "README|LICENSE|gitattributes" `
+  -Base "..\ComfyUI_windows_portable\ComfyUI\models" `
+  -Repos @("Comfy-Org/MoGe")
 ```
 
-Total size is roughly 24 GB. The script prints progress and resumes from where
-it left off if the download is interrupted.
+Total is roughly 25 GB. The script prints progress and resumes from where it left
+off if interrupted.
 
 ### 5. Install Python dependencies & CUDA wheels
 
@@ -135,16 +148,27 @@ them yourself** — `SETUP.bat` (or the helper below) downloads exact-match whee
 this stack (**CUDA 13.0 / PyTorch 2.11 / Python 3.13**, `win_amd64`) from
 [Andrea Pozzetti's cuda-wheels repo](https://github.com/PozzettiAndrea/cuda-wheels).
 
-- **Automatic (recommended)** — already handled by `SETUP.bat`. To do just this
-  step on its own:
+- **Automatic (recommended)** — `SETUP.bat` does all of this for you. To run just
+  these steps by hand:
   ```bat
+  :: 1. CUDA kernel wheels (download, then install without touching torch)
   cd _downloads
   powershell -ExecutionPolicy Bypass -File get_wheels.ps1 -Dest .\wheels
   ..\ComfyUI_windows_portable\python_embeded\python.exe -m pip install --no-deps wheels\*.whl
-  ```
-  Then install the node's own Python deps:
-  ```bat
-  ComfyUI_windows_portable\python_embeded\python.exe ComfyUI\custom_nodes\Pixal3D-ComfyUI\install.py
+  cd ..
+
+  :: 2. Node Python deps -- but NOT via `install.py`. The node's requirements.txt
+  ::    pins natten==0.21.6, which has no Windows wheel and fails to build from
+  ::    source; because pip installs a -r file atomically, that one failure aborts
+  ::    the whole install (diffusers, trimesh, accelerate, timm, utils3d). natten
+  ::    is optional at runtime (the node falls back without it), so install
+  ::    everything except natten:
+  findstr /v /i natten ComfyUI_windows_portable\ComfyUI\custom_nodes\Pixal3D-ComfyUI\requirements.txt > "%TEMP%\pxl_reqs.txt"
+  ComfyUI_windows_portable\python_embeded\python.exe -m pip install -r "%TEMP%\pxl_reqs.txt"
+
+  :: 3. Two runtime deps the wheels need that are NOT in the node requirements:
+  ::    triton-windows (flex_gemm) and zstandard (o_voxel).
+  ComfyUI_windows_portable\python_embeded\python.exe -m pip install triton-windows zstandard
   ```
 
 - **Manual (direct links)** — the exact wheels for this stack
@@ -383,13 +407,18 @@ for debugging.
 ## Technical notes
 
 - Stack: ComfyUI portable 0.22, Python 3.13, PyTorch 2.11, CUDA 13.
-- Background removal runs in the watcher via `rembg`, independent of ComfyUI.
-- `download_if_missing` is set to `False` in the ComfyUI node config.
-  Models must be downloaded in advance with `hf_grab.ps1`. Downloading 24 GB
-  mid-job would cause a timeout.
-- The built-in RMBG-2.0 node inside Pixal3D is disabled (incompatible with
-  transformers 5.x). Two patches marked `# PATCH:` in
-  `pixal3d_comfy/runtime.py` handle this.
+- Background removal runs in the watcher via `rembg` (`isnet-general-use`),
+  independent of ComfyUI. The watcher writes the subject on a clean black field,
+  and the job is submitted with `background_mode=none` — *not* `keep_alpha`,
+  because ComfyUI's `LoadImage` splits an RGBA PNG into an RGB image plus a
+  separate mask, so alpha never reaches the node.
+- The node's built-in RMBG-2.0 is **not used** by this pipeline: the job sets
+  `load_rembg=False` and removes the background in the watcher instead. So you
+  do not need the `briaai/RMBG-2.0` model, and the RMBG-2.0 / transformers 5.x
+  incompatibility never comes into play.
+- `download_if_missing` is set to `False` in the ComfyUI node config, so all
+  models must be present in advance (see step 4 — three sources). Downloading
+  ~25 GB mid-job would cause a timeout.
 - `hf_grab.ps1` supports resumable downloads, parallel-safe partial files,
   and HuggingFace token auth via the `HF_TOKEN` environment variable.
 

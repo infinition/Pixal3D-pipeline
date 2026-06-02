@@ -199,7 +199,12 @@ def build_prompt(image_filename: str, prefix: str, seed: int, cfg: dict) -> dict
                 "image": ["1", 0],
                 "seed": seed,
                 "pipeline_type": cfg["pipeline_type"],
-                "background_mode": "keep_alpha",
+                # "none", not "keep_alpha": ComfyUI's LoadImage splits an RGBA PNG
+                # into an RGB IMAGE output + a separate MASK, so the alpha never
+                # reaches this node and keep_alpha aborts with "no alpha channel".
+                # The watcher already removed the background (rembg writes the
+                # subject on a clean black field), so "none" feeds that as-is.
+                "background_mode": "none",
                 "camera_mode": cfg["camera_mode"],
                 "manual_camera_angle_x": 0.857556,
                 "manual_distance": 2.0,
